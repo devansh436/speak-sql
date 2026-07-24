@@ -1,13 +1,122 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const {
+  getFirebaseAuth,
+  hasFirebaseCredentials,
+} = require("../config/firebaseAdmin");
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
+function buildProfileFromFirebase(decodedToken) {
+  const email = decodedToken.email || `${decodedToken.uid}@firebase.local`;
+  const username =
+    decodedToken.name || email.split("@")[0] || `user-${decodedToken.uid.slice(0, 8)}`;
 
-// Middleware to verify JWT token and attach user to request
+  return {
+    firebaseUid: decodedToken.uid,
+    email: email.toLowerCase(),
+    username,
+  };
+}
+
+function resolveUserRole(user, decodedToken) {
+  return (
+    user?.role ||
+    decodedToken?.role ||
+    decodedToken?.customClaims?.role ||
+    "USER"
+  );
+}
+
+function buildUsernameCandidates(decodedToken) {
+  const baseName =
+    decodedToken.name ||
+    decodedToken.email?.split("@")[0] ||
+    `user-${decodedToken.uid.slice(0, 8)}`;
+
+  const normalizedBase = baseName
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, "")
+    .replace(/^[^a-z0-9]+/, "")
+    .replace(/[^a-z0-9]+$/, "") || `user-${decodedToken.uid.slice(0, 8)}`;
+
+  return [
+    normalizedBase,
+    `${normalizedBase}_${decodedToken.uid.slice(0, 6)}`,
+    `${normalizedBase}_${decodedToken.uid.slice(0, 10)}`,
+  ];
+}
+
+async function findUniqueUsername(decodedToken) {
+  const candidates = buildUsernameCandidates(decodedToken);
+
+  for (const candidate of candidates) {
+    const existing = await User.findOne({ username: candidate }).select("_id");
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  return `${candidates[0]}_${Date.now().toString(36)}`;
+}
+
+async function upsertMongoUser(decodedToken) {
+  const normalizedEmail = decodedToken.email?.toLowerCase();
+  const firebaseUid = decodedToken.uid;
+
+  let user = await User.findOne({ firebaseUid });
+
+  if (!user && normalizedEmail) {
+    user = await User.findOne({ email: normalizedEmail });
+  }
+
+  if (!user) {
+    const username = await findUniqueUsername(decodedToken);
+    return User.create({
+      firebaseUid,
+      username,
+      email: normalizedEmail || `${firebaseUid}@firebase.local`,
+      role: resolveUserRole(null, decodedToken),
+    });
+  }
+
+  const updatedProfile = buildProfileFromFirebase(decodedToken);
+  let shouldSave = false;
+
+  if (!user.firebaseUid) {
+    user.firebaseUid = updatedProfile.firebaseUid;
+    shouldSave = true;
+  }
+
+  if (updatedProfile.email && user.email !== updatedProfile.email) {
+    user.email = updatedProfile.email;
+    shouldSave = true;
+  }
+
+  if (updatedProfile.username && user.username !== updatedProfile.username) {
+    const usernameTaken = await User.findOne({
+      username: updatedProfile.username,
+      _id: { $ne: user._id },
+    }).select("_id");
+
+    if (!usernameTaken) {
+      user.username = updatedProfile.username;
+      shouldSave = true;
+    }
+  }
+
+  if (!user.role) {
+    user.role = resolveUserRole(user, decodedToken);
+    shouldSave = true;
+  }
+
+  if (shouldSave) {
+    await user.save();
+  }
+
+  return user;
+}
+
+// Middleware to verify Firebase ID token and attach user to request
 const authenticate = async (req, res, next) => {
   try {
-    // Get token from header
     const token = req.header("Authorization")?.replace("Bearer ", "");
 
     if (!token) {
@@ -16,11 +125,15 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!hasFirebaseCredentials()) {
+      return res.status(503).json({
+        error:
+          "Firebase Admin credentials are not configured on the server yet.",
+      });
+    }
 
-    // Find user
-    const user = await User.findById(decoded.userId).select("-password");
+    const decoded = await getFirebaseAuth().verifyIdToken(token);
+    const user = await upsertMongoUser(decoded);
 
     if (!user) {
       return res.status(401).json({
@@ -31,17 +144,32 @@ const authenticate = async (req, res, next) => {
     // Attach user to request
     req.user = user;
     req.userId = user._id;
-    req.userRole = user.role;
+    req.userRole = resolveUserRole(user, decoded);
+    req.firebaseUser = decoded;
 
     next();
   } catch (error) {
-    if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({ error: "Invalid token." });
+    if (error.code && String(error.code).startsWith("auth/")) {
+      return res.status(401).json({ error: "Invalid Firebase token." });
     }
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ error: "Token expired." });
+    if (
+      error.message?.includes(
+        "Firebase Admin credentials are not configured"
+      )
+    ) {
+      return res.status(503).json({ error: error.message });
     }
-    res.status(500).json({ error: "Authentication failed." });
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: "Mongo user already exists with the same email or username.",
+        details: error.message,
+      });
+    }
+
+    res.status(500).json({
+      error: "Authentication failed.",
+      details: error.message,
+    });
   }
 };
 
@@ -65,14 +193,7 @@ const authorize = (...allowedRoles) => {
   };
 };
 
-// Generate JWT token
-const generateToken = (userId, role) => {
-  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: "7d" });
-};
-
 module.exports = {
   authenticate,
   authorize,
-  generateToken,
-  JWT_SECRET,
 };

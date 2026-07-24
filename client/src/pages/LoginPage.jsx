@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Container,
@@ -9,6 +9,7 @@ import {
   Box,
   Alert,
   CircularProgress,
+  Divider,
 } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 
@@ -17,8 +18,15 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { login, loginWithGoogle, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,13 +38,24 @@ function LoginPage() {
 
     const result = await login(email, password);
 
-    if (result.success) {
-      navigate("/");
-    } else {
+    if (!result.success) {
       setError(result.error);
     }
 
     setLoading(false);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setGoogleLoading(true);
+
+    const result = await loginWithGoogle();
+
+    if (!result.success) {
+      setError(result.error);
+    }
+
+    setGoogleLoading(false);
   };
 
   return (
@@ -60,6 +79,23 @@ function LoginPage() {
             {error}
           </Alert>
         )}
+
+        <Button
+          fullWidth
+          variant="outlined"
+          size="large"
+          onClick={handleGoogleSignIn}
+          disabled={loading || googleLoading}
+          sx={{ mb: 2, py: 1.2 }}
+        >
+          {googleLoading ? (
+            <CircularProgress size={24} />
+          ) : (
+            "Continue with Google"
+          )}
+        </Button>
+
+        <Divider sx={{ my: 2 }}>or</Divider>
 
         <Box component="form" onSubmit={handleSubmit}>
           <TextField

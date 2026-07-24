@@ -12,21 +12,21 @@ const MONGODB_URI =
 
 const testUsers = [
   {
+    firebaseUid: "demo-user-uid",
     username: "demo_user",
     email: "user@demo.com",
-    password: "password123",
     role: "USER",
   },
   {
+    firebaseUid: "demo-staff-uid",
     username: "demo_staff",
     email: "staff@demo.com",
-    password: "password123",
     role: "STAFF",
   },
   {
+    firebaseUid: "demo-admin-uid",
     username: "demo_admin",
     email: "admin@demo.com",
-    password: "password123",
     role: "ADMIN",
   },
 ];
@@ -50,19 +50,19 @@ async function seedUsers() {
       await user.save();
 
       console.log(`✅ Created ${userData.role} user:`);
+      console.log(`   Firebase UID: ${userData.firebaseUid}`);
       console.log(`   Username: ${userData.username}`);
       console.log(`   Email: ${userData.email}`);
-      console.log(`   Password: ${userData.password}`);
       console.log(`   Role: ${userData.role}\n`);
     }
 
     console.log("🎉 All test users created successfully!\n");
-    console.log("📝 You can now use these credentials to test the system:");
+    console.log("📝 These are profile records for Firebase-authenticated users:");
     console.log("=".repeat(50));
     testUsers.forEach((u) => {
       console.log(`\n${u.role}:`);
       console.log(`  Email: ${u.email}`);
-      console.log(`  Password: ${u.password}`);
+      console.log(`  Firebase UID: ${u.firebaseUid}`);
     });
     console.log("\n" + "=".repeat(50));
   } catch (error) {

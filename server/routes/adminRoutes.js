@@ -10,9 +10,7 @@ router.use(authorize('ADMIN'));
 // Get all users
 router.get('/users', async (req, res) => {
   try {
-    const users = await User.find()
-      .select('-password')
-      .sort({ createdAt: -1 });
+    const users = await User.find().sort({ createdAt: -1 });
     
     res.json({ users });
   } catch (error) {
@@ -34,7 +32,7 @@ router.patch('/users/:userId/role', async (req, res) => {
       userId,
       { role },
       { new: true }
-    ).select('-password');
+    );
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -55,7 +53,7 @@ router.delete('/users/:userId', async (req, res) => {
     const { userId } = req.params;
 
     // Prevent admin from deleting themselves
-    if (userId === req.user.userId) {
+    if (userId === req.user._id.toString()) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 

@@ -4,7 +4,7 @@ This file is the working memory for AI-assisted feature development in this repo
 
 ## Project Summary
 
-Speak SQL is a full-stack natural-language-to-SQL app for a library-style dataset. The frontend is a React + Vite app and the backend is an Express API that combines MongoDB authentication with MySQL query execution.
+Speak SQL is a full-stack natural-language-to-SQL app for a library-style dataset. The frontend is a React + Vite app and the backend is an Express API that combines Firebase Auth-backed user identity with MongoDB profile storage and MySQL query execution.
 
 ## Core Goals
 
@@ -16,7 +16,7 @@ Speak SQL is a full-stack natural-language-to-SQL app for a library-style datase
 ## Stack
 
 - Client: React 19, Vite, React Router, MUI, Axios
-- Server: Node.js, Express 5, MongoDB, MySQL, bcryptjs, jsonwebtoken, mysql2
+- Server: Node.js, Express 5, Firebase Admin, MongoDB, MySQL, mysql2
 - AI / SQL: LLM-backed SQL generation and validation services in the server layer
 - Deployment: Vercel for client and serverless API entry points
 
@@ -52,16 +52,23 @@ Speak SQL is a full-stack natural-language-to-SQL app for a library-style datase
 
 ## Environment Notes
 
-- Keep MongoDB credentials and JWT secrets in server environment variables.
+- Keep Firebase Admin credentials, MongoDB credentials, and MySQL connection details in server environment variables.
 - Keep MySQL connection details in server environment variables.
 - Keep any Gemini or other LLM keys in server environment variables.
 - The client should point to the running API through the configured base URL in client/src/services/api.js.
+
+## Firebase Auth Notes
+
+- Client Firebase config lives in client/src/firebase.js and uses dummy placeholders until real env values are added.
+- Server Firebase Admin config lives in server/config/firebaseAdmin.js and expects FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.
+- Login/register are handled by Firebase on the client; the backend only verifies Firebase ID tokens and hydrates a local user profile.
+- Roles still come from the MongoDB user profile and drive query/admin permissions.
 
 ## Important Behavior
 
 - Backend health is checked from the client on app load.
 - Authentication is required for the protected routes in the client.
-- The backend supports both MongoDB-backed auth state and MySQL query execution.
+- The backend supports Firebase-backed identity plus MongoDB user profiles and MySQL query execution.
 - CORS handling in server/server.js is customized for localhost and Vercel origins.
 
 ## AI Editing Notes

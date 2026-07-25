@@ -1,99 +1,27 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
 const { authenticate, authorize } = require('../middleware/auth');
+const {
+  getAllUsers,
+  updateUserRole,
+  deleteUser,
+  getAdminStats,
+} = require('../controllers/adminController');
 
 // Protect all admin routes
 router.use(authenticate);
 router.use(authorize('ADMIN'));
 
 // Get all users
-router.get('/users', async (req, res) => {
-  try {
-    const users = await User.find().sort({ createdAt: -1 });
-    
-    res.json({ users });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get('/users', getAllUsers);
 
 // Update user role
-router.patch('/users/:userId/role', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { role } = req.body;
-    console.log(`UserID = ${userId}; Role = ${role}`);
-    if (!['ADMIN', 'STAFF', 'USER'].includes(role)) {
-      return res.status(400).json({ error: 'Invalid role' });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { role },
-      { new: true }
-    );
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json({ 
-      message: 'Role updated successfully',
-      user 
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.patch('/users/:userId/role', updateUserRole);
 
 // Delete user
-router.delete('/users/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Prevent admin from deleting themselves
-    if (userId === req.user._id.toString()) {
-      return res.status(400).json({ error: 'Cannot delete your own account' });
-    }
-
-    const user = await User.findByIdAndDelete(userId);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json({ 
-      message: 'User deleted successfully',
-      deletedUser: {
-        username: user.username,
-        email: user.email
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.delete('/users/:userId', deleteUser);
 
 // Get user statistics
-router.get('/stats', async (req, res) => {
-  try {
-    const totalUsers = await User.countDocuments();
-    const adminCount = await User.countDocuments({ role: 'ADMIN' });
-    const staffCount = await User.countDocuments({ role: 'STAFF' });
-    const userCount = await User.countDocuments({ role: 'USER' });
-
-    res.json({
-      totalUsers,
-      byRole: {
-        ADMIN: adminCount,
-        STAFF: staffCount,
-        USER: userCount
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.get('/stats', getAdminStats);
 
 module.exports = router;

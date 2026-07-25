@@ -1,6 +1,5 @@
 const axios = require("axios");
 const { ROLE_PERMISSIONS } = require("../middleware/roleValidator");
-require("dotenv").config();
 
 // Gemini API endpoint
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";

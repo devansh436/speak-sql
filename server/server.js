@@ -14,9 +14,9 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = [
     "http://localhost:3000",
-    "http://localhost:5000",
+    // "http://localhost:5000",
     "http://localhost:5173",
-    "https://nlq-2-sql-fronted.vercel.app",
+    // "https://nlq-2-sql-fronted.vercel.app",
   ];
 
   // Allow any vercel.app domain or localhost
@@ -50,11 +50,11 @@ app.use(express.json());
 // Root route
 app.get("/", (req, res) => {
   res.json({
-    message: "Library NLQ Backend API with Role-Based Access Control",
+    message: "Library NLQ Backend API with Firebase Auth and Role-Based Access Control",
     status: "running",
     version: "2.0.0",
     features: [
-      "MongoDB Authentication",
+      "Firebase Authentication",
       "Role-Based Query Validation (USER, STAFF, ADMIN)",
       "Natural Language to SQL with LLM",
       "Secure Query Execution",
@@ -62,8 +62,6 @@ app.get("/", (req, res) => {
     endpoints: {
       health: "/api/health",
       auth: {
-        register: "POST /api/auth/register",
-        login: "POST /api/auth/login",
         me: "GET /api/auth/me",
         permissions: "GET /api/auth/permissions",
       },
@@ -123,7 +121,7 @@ const startServer = async () => {
   try {
     // Wait for MongoDB connection before starting server
     await connectMongoDB();
-    console.log("✅ MongoDB ready for authentication");
+    console.log("✅ MongoDB ready for user profile sync");
 
     // Only listen locally, not on Vercel
     if (process.env.NODE_ENV !== "production") {
@@ -132,14 +130,14 @@ const startServer = async () => {
         console.log(
           `⚕️ Check server health on http://localhost:${PORT}/api/health`
         );
-        console.log(`🔐 Authentication enabled with MongoDB`);
+        console.log(`🔐 Firebase Auth middleware ready`);
         console.log(`📊 Role-based access control active`);
       });
     }
   } catch (error) {
     console.error("❌ Failed to start server:", error.message);
     console.log(
-      "⚠️ Server starting without MongoDB (auth features may not work)"
+      "⚠️ Server starting without MongoDB (profile sync and admin features may not work)"
     );
 
     // Start server anyway for development

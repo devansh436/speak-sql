@@ -34,6 +34,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import PersonIcon from '@mui/icons-material/Person';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { getAuthHeader } from '../services/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -56,9 +57,9 @@ function AdminPanel() {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const headers = await getAuthHeader();
       const response = await axios.get(`${API_URL}/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers
       });
       setUsers(response.data.users);
       setLoading(false);
@@ -70,9 +71,9 @@ function AdminPanel() {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const headers = await getAuthHeader();
       const response = await axios.get(`${API_URL}/admin/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers
       });
       setStats(response.data);
     } catch (err) {
@@ -82,11 +83,11 @@ function AdminPanel() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      const token = localStorage.getItem('token');
+      const headers = await getAuthHeader();
       await axios.patch(
         `${API_URL}/admin/users/${userId}/role`,
         { role: newRole },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers }
       );
       
       setSuccess('Role updated successfully');
@@ -103,9 +104,9 @@ function AdminPanel() {
 
   const handleDeleteUser = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const headers = await getAuthHeader();
       await axios.delete(`${API_URL}/admin/users/${deleteDialog.user._id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers
       });
       
       setSuccess('User deleted successfully');

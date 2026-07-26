@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const express = require("express");
 const cors = require("cors");
-const connectMongoDB = require("./config/mongodb");
 const queryRoutes = require("./routes/queryRoutes");
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -67,7 +66,7 @@ app.use((req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   console.error(err);
 
   res.status(err.status || 500).json({

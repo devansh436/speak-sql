@@ -25,64 +25,63 @@ function RegisterPage() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    // Validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-
     if (formData.password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
 
     setLoading(true);
-
-    // Register as USER by default
-    const result = await register(
-      formData.username,
-      formData.email,
-      formData.password,
-      "USER"
-    );
-
+    const result = await register(formData.username, formData.email, formData.password, "USER");
     if (result.success) {
       navigate("/");
     } else {
       setError(result.error);
     }
-
     setLoading(false);
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          📝 Register
-        </Typography>
-
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          align="center"
-          sx={{ mb: 3 }}
+    <Container maxWidth="sm" sx={{ mt: { xs: 6, sm: 10 }, mb: 6 }}>
+      <Box className="auth-card-enter" sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+        <Box
+          sx={{
+            width: 44,
+            height: 44,
+            borderRadius: 2,
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 800,
+            fontSize: "1.35rem",
+          }}
         >
-          Create a new account to access the system
+          S
+        </Box>
+      </Box>
+
+      <Paper variant="outlined" className="auth-card-enter" sx={{ p: { xs: 3, sm: 4.5 } }}>
+        <Typography variant="h4" component="h1" fontWeight={700} gutterBottom align="center">
+          Create an account
+        </Typography>
+        <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3.5 }}>
+          Sign up to start querying the library database
         </Typography>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 2.5 }}>
             {error}
           </Alert>
         )}
@@ -98,7 +97,6 @@ function RegisterPage() {
             margin="normal"
             autoFocus
           />
-
           <TextField
             fullWidth
             label="Email"
@@ -110,7 +108,6 @@ function RegisterPage() {
             margin="normal"
             autoComplete="email"
           />
-
           <TextField
             fullWidth
             label="Password"
@@ -123,10 +120,9 @@ function RegisterPage() {
             autoComplete="new-password"
             helperText="Minimum 6 characters"
           />
-
           <TextField
             fullWidth
-            label="Confirm Password"
+            label="Confirm password"
             name="confirmPassword"
             type="password"
             value={formData.confirmPassword}
@@ -136,9 +132,9 @@ function RegisterPage() {
             autoComplete="new-password"
           />
 
-          <Alert severity="info" sx={{ mt: 2 }}>
-            New users are registered as <strong>USER</strong> role by default.
-            Contact administrator for role upgrades.
+          <Alert severity="info" sx={{ mt: 2.5 }}>
+            New accounts are registered with the <strong>USER</strong> role.
+            Contact an administrator for a role upgrade.
           </Alert>
 
           <Button
@@ -147,19 +143,16 @@ function RegisterPage() {
             variant="contained"
             size="large"
             disabled={loading}
-            sx={{ mt: 3, mb: 2 }}
+            sx={{ mt: 3, mb: 2.5, py: 1.2 }}
           >
-            {loading ? <CircularProgress size={24} /> : "Register"}
+            {loading ? <CircularProgress size={22} color="inherit" /> : "Create account"}
           </Button>
 
           <Box sx={{ textAlign: "center" }}>
-            <Typography variant="body2">
+            <Typography variant="body2" color="text.secondary">
               Already have an account?{" "}
-              <Link
-                to="/login"
-                style={{ color: "#90caf9", textDecoration: "none" }}
-              >
-                Login here
+              <Link to="/login" style={{ color: "#22C55E", fontWeight: 600, textDecoration: "none" }}>
+                Log in here
               </Link>
             </Typography>
           </Box>

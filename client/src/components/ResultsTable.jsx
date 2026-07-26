@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Paper,
   Table,
@@ -7,113 +7,168 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   Typography,
   Box,
   Alert,
   Chip,
   Divider,
   Fade,
-  Grow,
-  Zoom,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import CodeIcon from "@mui/icons-material/Code";
 import StorageIcon from "@mui/icons-material/Storage";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DoneIcon from "@mui/icons-material/Done";
+import CircularProgress from "@mui/material/CircularProgress";
 
-function ResultsTable({ result }) {
-  if (!result) {
+const TRUNCATE_AT = 48;
+const ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
+
+// Renders a cell value safely regardless of type (null/undefined/boolean/
+// object all previously risked crashing or printing "[object Object]").
+function stringifyValue(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+// Wide or long cell content (JSON blobs, long titles, addresses) would
+// otherwise force horizontal scrolling on every row. Truncate visually and
+// surface the full value on hover instead.
+function CellValue({ value }) {
+  const text = stringifyValue(value);
+
+  if (text === null) {
     return (
-      <Fade in timeout={800}>
-        <Paper
-          elevation={0}
-          sx={{
-            p: 6,
-            textAlign: "center",
-            background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-            border: "1px solid rgba(96, 165, 250, 0.1)",
-          }}
-        >
-          <StorageIcon
-            sx={{ fontSize: 64, color: "primary.main", opacity: 0.3, mb: 2 }}
-          />
-          <Typography color="text.secondary" variant="h6">
-            Enter a question above to see results
-          </Typography>
-          <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
-            Your query results will appear here
-          </Typography>
-        </Paper>
-      </Fade>
+      <Typography component="em" variant="body2" color="text.disabled">
+        NULL
+      </Typography>
     );
   }
 
-  if (!result.success) {
-    return (
-      <Fade in timeout={500}>
-        <Paper
-          elevation={0}
-          sx={{
-            p: 4,
-            background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-            border: "1px solid rgba(248, 113, 113, 0.2)",
-          }}
-        >
-          <Alert
-            severity="error"
-            icon={<ErrorIcon />}
-            sx={{
-              backgroundColor: "rgba(248, 113, 113, 0.1)",
-              border: "1px solid rgba(248, 113, 113, 0.3)",
-            }}
-          >
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Query Failed
+  const isLong = text.length > TRUNCATE_AT;
+  const display = (
+    <Box
+      sx={{
+        maxWidth: 320,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {text}
+    </Box>
+  );
+
+  return isLong ? (
+    <Tooltip title={text} arrow placement="top-start" enterDelay={400}>
+      <span>{display}</span>
+    </Tooltip>
+  ) : (
+    display
+  );
+}
+
+function EmptyState() {
+  return (
+    <Paper variant="outlined" sx={{ p: 6, textAlign: "center" }}>
+      <StorageIcon sx={{ fontSize: 44, color: "text.disabled", mb: 2 }} />
+      <Typography color="text.secondary" variant="h6">
+        Enter a question above to see results
+      </Typography>
+      <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5 }}>
+        Your query results will appear here
+      </Typography>
+    </Paper>
+  );
+}
+
+function LoadingState() {
+  return (
+    <Paper variant="outlined" sx={{ p: 6, textAlign: "center" }}>
+      <CircularProgress size={32} thickness={4} sx={{ mb: 2 }} />
+      <Typography color="text.secondary" variant="body1">
+        Running your query...
+      </Typography>
+    </Paper>
+  );
+}
+
+function ErrorState({ result }) {
+  return (
+    <Paper variant="outlined" sx={{ p: 4 }}>
+      <Alert severity="error" icon={<ErrorIcon />}>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
+          Query failed
+        </Typography>
+        <Typography variant="body2">{result.error}</Typography>
+        {result.query && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" display="block" sx={{ mb: 1 }}>
+              Generated SQL:
             </Typography>
-            <Typography variant="body2">{result.error}</Typography>
-            {result.query && (
-              <Box sx={{ mt: 2 }}>
-                <Typography
-                  variant="caption"
-                  display="block"
-                  sx={{ mb: 1, opacity: 0.8 }}
-                >
-                  Generated SQL:
-                </Typography>
-                <Box
-                  sx={{
-                    fontSize: "12px",
-                    background: "rgba(15, 23, 42, 0.5)",
-                    color: "#f87171",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    fontFamily: "monospace",
-                    border: "1px solid rgba(248, 113, 113, 0.2)",
-                    overflow: "auto",
-                  }}
-                >
-                  {result.query}
-                </Box>
-              </Box>
-            )}
-          </Alert>
-        </Paper>
-      </Fade>
-    );
-  }
+            <Box
+              sx={{
+                fontSize: "12px",
+                bgcolor: "background.default",
+                p: 1.5,
+                borderRadius: 1,
+                fontFamily: "monospace",
+                border: "1px solid",
+                borderColor: "divider",
+                overflow: "auto",
+              }}
+            >
+              {result.query}
+            </Box>
+          </Box>
+        )}
+      </Alert>
+    </Paper>
+  );
+}
 
-  const { query, results, rowCount, attempt } = result;
+function ResultsTable({ result, loading }) {
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [copied, setCopied] = useState(false);
+
+  const results = result?.success ? result.results : null;
+
+  useEffect(() => {
+    setPage(0);
+  }, [results]);
+
+  if (loading) return <LoadingState />;
+  if (!result) return <EmptyState />;
+  if (!result.success) return <ErrorState result={result} />;
+
+  const { query, rowCount, attempt } = result;
+  const columns = results.length > 0 ? Object.keys(results[0]) : [];
+  const pageRows = results.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(query);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard permission denied or unavailable — silently ignore, the
+      // query text is still visible for manual copy.
+    }
+  };
 
   return (
-    <Fade in timeout={500}>
-      <Paper
-        elevation={0}
-        sx={{
-          p: 4,
-          background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-          border: "1px solid rgba(52, 211, 153, 0.2)",
-        }}
-      >
+    <Fade in timeout={400}>
+      <Paper variant="outlined" sx={{ p: { xs: 2.5, sm: 4 } }}>
         <Box
           sx={{
             display: "flex",
@@ -123,181 +178,114 @@ function ResultsTable({ result }) {
             gap: 1,
           }}
         >
-          <Zoom in timeout={300}>
-            <CheckCircleIcon sx={{ color: "success.main", mr: 1 }} />
-          </Zoom>
-          <Typography variant="h6">Query Results</Typography>
-          <Zoom in timeout={400}>
-            <Chip
-              label={`${rowCount} row${rowCount !== 1 ? "s" : ""}`}
-              size="small"
-              sx={{
-                ml: 1,
-                backgroundColor: "rgba(52, 211, 153, 0.15)",
-                color: "success.main",
-                border: "1px solid rgba(52, 211, 153, 0.3)",
-              }}
-            />
-          </Zoom>
+          <CheckCircleIcon sx={{ color: "success.main", mr: 1 }} />
+          <Typography variant="h6">Results</Typography>
+          <Chip
+            label={`${rowCount} row${rowCount !== 1 ? "s" : ""}`}
+            size="small"
+            color="success"
+            variant="outlined"
+            sx={{ ml: 1 }}
+          />
           {attempt > 1 && (
-            <Zoom in timeout={500}>
-              <Chip
-                label={`Self-corrected (Attempt ${attempt})`}
-                size="small"
-                sx={{
-                  ml: 1,
-                  backgroundColor: "rgba(251, 191, 36, 0.15)",
-                  color: "warning.main",
-                  border: "1px solid rgba(251, 191, 36, 0.3)",
-                }}
-              />
-            </Zoom>
+            <Chip
+              label={`Self-corrected · attempt ${attempt}`}
+              size="small"
+              color="warning"
+              variant="outlined"
+            />
           )}
         </Box>
 
-        <Grow in timeout={600}>
-          <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-              <CodeIcon sx={{ fontSize: 16, mr: 1, color: "primary.main" }} />
-              <Typography variant="caption" color="text.secondary">
-                Generated SQL:
-              </Typography>
+        <Box sx={{ mb: 3 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 1,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+              <CodeIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+              <Typography variant="caption">Generated SQL</Typography>
             </Box>
-            <Box
-              sx={{
-                fontSize: "13px",
-                background: "rgba(96, 165, 250, 0.05)",
-                color: "primary.light",
-                padding: "14px",
-                borderRadius: "8px",
-                fontFamily: "monospace",
-                border: "1px solid rgba(96, 165, 250, 0.2)",
-                overflow: "auto",
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  background: "rgba(96, 165, 250, 0.1)",
-                },
-              }}
-            >
-              {query}
-            </Box>
+            <Tooltip title={copied ? "Copied" : "Copy SQL"} arrow>
+              <IconButton size="small" onClick={handleCopy} aria-label="Copy generated SQL">
+                {copied ? (
+                  <DoneIcon sx={{ fontSize: 16, color: "success.main" }} />
+                ) : (
+                  <ContentCopyIcon sx={{ fontSize: 15 }} />
+                )}
+              </IconButton>
+            </Tooltip>
           </Box>
-        </Grow>
+          <Box
+            sx={{
+              fontSize: "13px",
+              bgcolor: "background.default",
+              color: "primary.light",
+              p: 1.75,
+              borderRadius: 1.5,
+              fontFamily: "monospace",
+              border: "1px solid",
+              borderColor: "divider",
+              overflow: "auto",
+            }}
+          >
+            {query}
+          </Box>
+        </Box>
 
-        <Divider sx={{ my: 3, borderColor: "rgba(96, 165, 250, 0.1)" }} />
+        <Divider sx={{ my: 3 }} />
 
         {results.length === 0 ? (
-          <Fade in timeout={500}>
-            <Alert
-              severity="info"
-              sx={{
-                backgroundColor: "rgba(96, 165, 250, 0.1)",
-                border: "1px solid rgba(96, 165, 250, 0.3)",
-              }}
-            >
-              No results found
-            </Alert>
-          </Fade>
+          <Alert severity="info">No results found</Alert>
         ) : (
-          <Grow in timeout={700}>
-            <TableContainer
-              sx={{
-                maxHeight: 500,
-                borderRadius: "8px",
-                border: "1px solid rgba(96, 165, 250, 0.2)",
-                "&::-webkit-scrollbar": {
-                  width: "8px",
-                  height: "8px",
-                },
-                "&::-webkit-scrollbar-track": {
-                  background: "rgba(15, 23, 42, 0.5)",
-                },
-                "&::-webkit-scrollbar-thumb": {
-                  background: "rgba(96, 165, 250, 0.3)",
-                  borderRadius: "4px",
-                  "&:hover": {
-                    background: "rgba(96, 165, 250, 0.5)",
-                  },
-                },
-              }}
-            >
+          <>
+            <TableContainer variant="outlined" component={Paper} sx={{ maxHeight: 520 }}>
               <Table stickyHeader size="small">
-                <TableHead
-                  sx={{
-                    "& .MuiTableCell-root": {
-                      bgcolor: "rgba(15, 23, 42, 0.98)", // solid dark
-                      color: "primary.light",
-                      fontWeight: 700,
-                      borderBottom: "2px solid rgba(96, 165, 250, 0.3)",
-                      textTransform: "uppercase",
-                      fontSize: "0.75rem",
-                      letterSpacing: "0.5px",
-                      zIndex: 2, // keep above body
-                    },
-                  }}
-                >
-                  {" "}
+                <TableHead>
                   <TableRow>
-                    {results &&
-                      results.length > 0 &&
-                      Object.keys(results[0]).map((column) => (
-                        <TableCell
-                          key={column}
-                          sx={{
-                            fontWeight: 700,
-                            bgcolor: "rgba(96, 165, 250, 0.1)",
-                            color: "primary.light",
-                            borderBottom: "2px solid rgba(96, 165, 250, 0.3)",
-                            textTransform: "uppercase",
-                            fontSize: "0.75rem",
-                            letterSpacing: "0.5px",
-                          }}
-                        >
-                          {column}
-                        </TableCell>
-                      ))}
+                    {columns.map((column) => (
+                      <TableCell key={column}>{column}</TableCell>
+                    ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {results &&
-                    results.length > 0 &&
-                    results.map((row, index) => (
-                      <TableRow
-                        key={index}
-                        sx={{
-                          transition: "all 0.2s ease",
-                          "&:hover": {
-                            backgroundColor: "rgba(96, 165, 250, 0.05)",
-                          },
-                        }}
-                      >
-                        {Object.values(row).map((value, cellIndex) => (
-                          <TableCell
-                            key={cellIndex}
-                            sx={{
-                              borderBottom: "1px solid rgba(96, 165, 250, 0.1)",
-                            }}
-                          >
-                            {value === null ? (
-                              <em
-                                style={{
-                                  color: "#94a3b8",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                NULL
-                              </em>
-                            ) : (
-                              value.toString()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
+                  {pageRows.map((row, index) => (
+                    <TableRow
+                      key={page * rowsPerPage + index}
+                      hover
+                      sx={{ "&:last-child td": { borderBottom: 0 } }}
+                    >
+                      {columns.map((column) => (
+                        <TableCell key={column}>
+                          <CellValue value={row[column]} />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>
-          </Grow>
+
+            {results.length > ROWS_PER_PAGE_OPTIONS[0] && (
+              <TablePagination
+                component="div"
+                count={results.length}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+                sx={{ mt: 1 }}
+              />
+            )}
+          </>
         )}
       </Paper>
     </Fade>

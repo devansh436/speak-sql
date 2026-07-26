@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Container,
   Typography,
@@ -12,26 +12,95 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   CircularProgress,
   Alert,
   Chip,
-  Fade,
   Button,
   Tooltip,
+  TextField,
+  InputAdornment,
+  IconButton,
+  // MenuBookIcon,
+  // PeopleIcon,
+  // BadgeIcon,
+  // ReceiptLongIcon
 } from "@mui/material";
 import StorageIcon from "@mui/icons-material/Storage";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CachedIcon from "@mui/icons-material/Cached";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
 import { getTables } from "../services/api";
+import { TABLES_CACHE_KEY, TABLES_CACHE_DURATION_MS } from "../constants";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import GroupIcon from "@mui/icons-material/Group";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 
-const CACHE_KEY = "library_tables_cache";
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+const TRUNCATE_AT = 48;
+const ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 function TabPanel({ children, value, index }) {
   return (
     <div hidden={value !== index}>
       {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
     </div>
+  );
+}
+
+function readCache() {
+  try {
+    const cached = localStorage.getItem(TABLES_CACHE_KEY);
+    if (!cached) return null;
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp >= TABLES_CACHE_DURATION_MS) {
+      localStorage.removeItem(TABLES_CACHE_KEY);
+      return null;
+    }
+    return { data, timestamp };
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(data) {
+  try {
+    localStorage.setItem(TABLES_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch (error) {
+    console.error("Cache write error:", error);
+  }
+}
+
+
+const TABLE_CONFIG = [
+  { name: "books", label: "Books", icon: <AutoStoriesIcon /> },
+  { name: "members", label: "Members", icon: <GroupIcon /> },
+  { name: "staff", label: "Staff", icon: <AdminPanelSettingsIcon /> },
+  { name: "transactions", label: "Transactions", icon: <ReceiptLongIcon /> },
+];
+
+// Same truncate-and-tooltip treatment as the query results table, so long
+// values (addresses, emails, notes) don't blow out column widths.
+function CellValue({ value }) {
+  if (value === null || value === undefined) {
+    return (
+      <Chip label="NULL" size="small" variant="outlined" sx={{ opacity: 0.6 }} />
+    );
+  }
+  const text = String(value);
+  const isLong = text.length > TRUNCATE_AT;
+  const display = (
+    <Box sx={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      {text}
+    </Box>
+  );
+  return isLong ? (
+    <Tooltip title={text} arrow placement="top-start" enterDelay={400}>
+      <span>{display}</span>
+    </Tooltip>
+  ) : (
+    display
   );
 }
 
@@ -42,15 +111,26 @@ function TablesPage() {
   const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
   const [isCached, setIsCached] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     loadTables();
   }, []);
 
+  useEffect(() => {
+    setSearch("");
+    setPage(0);
+  }, [tabValue]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [search]);
+
   const loadTables = async (forceRefresh = false) => {
-    // Try to load from cache first
     if (!forceRefresh) {
-      const cached = loadFromCache();
+      const cached = readCache();
       if (cached) {
         setTables(cached.data);
         setLastFetched(new Date(cached.timestamp));
@@ -59,43 +139,7 @@ function TablesPage() {
         return;
       }
     }
-
-    // Fetch from API if cache miss or forced refresh
     await fetchAllTables();
-  };
-
-  const loadFromCache = () => {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (!cached) return null;
-
-      const { data, timestamp } = JSON.parse(cached);
-      const age = Date.now() - timestamp;
-
-      // Check if cache is still valid
-      if (age < CACHE_DURATION) {
-        return { data, timestamp };
-      }
-
-      // Cache expired
-      localStorage.removeItem(CACHE_KEY);
-      return null;
-    } catch (error) {
-      console.error("Cache read error:", error);
-      return null;
-    }
-  };
-
-  const saveToCache = (data) => {
-    try {
-      const cacheData = {
-        data,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-    } catch (error) {
-      console.error("Cache write error:", error);
-    }
   };
 
   const fetchAllTables = async () => {
@@ -104,16 +148,12 @@ function TablesPage() {
       setError(null);
       setIsCached(false);
 
-      // Use the new role-based tables API instead of executing queries via LLM
       const response = await getTables();
+      if (!response.success) throw new Error(response.error || "Failed to load tables");
 
-      if (response.success) {
-        setTables(response.tables);
-        setLastFetched(new Date());
-        saveToCache(response.tables);
-      } else {
-        throw new Error(response.error || "Failed to load tables");
-      }
+      setTables(response.tables);
+      setLastFetched(new Date());
+      writeCache(response.tables);
     } catch (err) {
       setError(err.message || "Failed to load tables");
     } finally {
@@ -121,49 +161,39 @@ function TablesPage() {
     }
   };
 
-  const handleRefresh = () => {
-    loadTables(true); // Force refresh
-  };
+  const handleRefresh = () => loadTables(true);
 
   const formatLastFetched = () => {
     if (!lastFetched) return "";
-    const now = new Date();
-    const diff = Math.floor((now - lastFetched) / 1000); // seconds
-
+    const diff = Math.floor((Date.now() - lastFetched) / 1000);
     if (diff < 60) return `${diff}s ago`;
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     return `${Math.floor(diff / 3600)}h ago`;
   };
 
-  const tableConfig = [
-    { name: "books", label: "Books", icon: "📚", color: "#60a5fa" },
-    { name: "members", label: "Members", icon: "👤", color: "#34d399" },
-    { name: "staff", label: "Staff", icon: "👨‍💼", color: "#a78bfa" },
-    {
-      name: "transactions",
-      label: "Transactions",
-      icon: "📝",
-      color: "#fbbf24",
-    },
-  ].filter(
-    (table) =>
-      tables[table.name] &&
-      tables[table.name] !== null &&
-      tables[table.name].length > 0
-  ); // Only show tables with data (not null or empty)
+  const visibleTables = TABLE_CONFIG.filter(
+    (table) => tables[table.name] && tables[table.name].length > 0
+  );
+
+  const activeTable = visibleTables[tabValue];
+  const activeRows = activeTable ? tables[activeTable.name] : [];
+
+  const filteredRows = useMemo(() => {
+    if (!search.trim()) return activeRows;
+    const q = search.trim().toLowerCase();
+    return activeRows.filter((row) =>
+      Object.values(row).some((v) => v !== null && v !== undefined && String(v).toLowerCase().includes(q))
+    );
+  }, [activeRows, search]);
+
+  const pageRows = filteredRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   if (loading && !isCached) {
     return (
       <Container maxWidth="xl" sx={{ py: 8 }}>
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          flexDirection="column"
-          gap={2}
-        >
-          <CircularProgress size={60} />
-          <Typography variant="h6" color="text.secondary">
+        <Box display="flex" justifyContent="center" alignItems="center" flexDirection="column" gap={2}>
+          <CircularProgress size={48} />
+          <Typography variant="body1" color="text.secondary">
             Loading database tables...
           </Typography>
         </Box>
@@ -188,13 +218,12 @@ function TablesPage() {
     );
   }
 
-  // Check if user has no accessible tables
-  if (tableConfig.length === 0) {
+  if (visibleTables.length === 0) {
     return (
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Alert severity="info">
-          You don't have access to any tables with your current role. Contact an
-          administrator to grant you table access permissions.
+          You don't have access to any tables with your current role. Contact
+          an administrator to request table access.
         </Alert>
       </Container>
     );
@@ -202,163 +231,141 @@ function TablesPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Fade in timeout={600}>
-        <Box>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              mb: 4,
-            }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <StorageIcon sx={{ fontSize: 40, color: "primary.main" }} />
-              <Box>
-                <Typography variant="h4" fontWeight={700}>
-                  Database Tables
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 4, flexWrap: "wrap", gap: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <StorageIcon sx={{ fontSize: 34, color: "primary.main" }} />
+          <Box>
+            <Typography variant="h4" fontWeight={700}>
+              Database Tables
+            </Typography>
+            {lastFetched && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mt: 0.5 }}>
+                {isCached && <CachedIcon sx={{ fontSize: 15, color: "text.secondary" }} />}
+                <Typography variant="caption" color="text.secondary">
+                  {isCached ? "Cached" : "Fresh"} · updated {formatLastFetched()}
                 </Typography>
-                {lastFetched && (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      mt: 0.5,
-                    }}
-                  >
-                    {isCached && (
-                      <CachedIcon
-                        sx={{ fontSize: 16, color: "success.main" }}
-                      />
-                    )}
-                    <Typography variant="caption" color="text.secondary">
-                      {isCached ? "Cached data" : "Fresh data"} • Updated{" "}
-                      {formatLastFetched()}
-                    </Typography>
-                  </Box>
-                )}
               </Box>
-            </Box>
+            )}
+          </Box>
+        </Box>
 
-            <Tooltip title="Refresh data from database">
-              <Button
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={handleRefresh}
-                disabled={loading}
-                sx={{ borderRadius: 2 }}
-              >
-                Refresh
-              </Button>
-            </Tooltip>
+        <Tooltip title="Refresh data from database">
+          <span>
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={handleRefresh} disabled={loading}>
+              Refresh
+            </Button>
+          </span>
+        </Tooltip>
+      </Box>
+
+      <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs
+            value={tabValue}
+            onChange={(e, newValue) => setTabValue(newValue)}
+            variant="fullWidth"
+            sx={{ "& .MuiTab-root": { fontWeight: 600, py: 2 } }}
+          >
+            {visibleTables.map((table) => (
+              <Tab
+                key={table.name}
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <span aria-hidden="true">{table.icon}</span>
+                    <span>{table.label}</span>
+                    <Chip
+                      label={tables[table.name].length}
+                      size="small"
+                      variant="outlined"
+                      sx={{ fontWeight: 700, fontSize: "0.7rem" }}
+                    />
+                  </Box>
+                }
+              />
+            ))}
+          </Tabs>
+        </Box>
+
+        <TabPanel value={tabValue} index={tabValue}>
+          <Box sx={{ px: { xs: 2, sm: 3 }, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+            <TextField
+              size="small"
+              placeholder={`Search in ${activeTable?.label.toLowerCase()}...`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              sx={{ minWidth: 260 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+                  </InputAdornment>
+                ),
+                endAdornment: search && (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearch("")} aria-label="Clear search">
+                      <ClearIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            {search && (
+              <Typography variant="caption" color="text.secondary">
+                {filteredRows.length} of {activeRows.length} rows match
+              </Typography>
+            )}
           </Box>
 
-          <Paper elevation={3} sx={{ borderRadius: 3, overflow: "hidden" }}>
-            <Box
-              sx={{
-                borderBottom: 1,
-                borderColor: "divider",
-                bgcolor: "background.paper",
-              }}
-            >
-              <Tabs
-                value={tabValue}
-                onChange={(e, newValue) => setTabValue(newValue)}
-                variant="fullWidth"
-                sx={{
-                  "& .MuiTab-root": {
-                    fontWeight: 600,
-                    fontSize: "1rem",
-                    py: 2,
-                  },
-                }}
-              >
-                {tableConfig.map((table, index) => (
-                  <Tab
-                    key={table.name}
-                    label={
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                      >
-                        <span>{table.icon}</span>
-                        <span>{table.label}</span>
-                        <Chip
-                          label={tables[table.name].length}
-                          size="small"
-                          sx={{
-                            bgcolor: table.color,
-                            color: "#000",
-                            fontWeight: 700,
-                            fontSize: "0.75rem",
-                          }}
-                        />
-                      </Box>
-                    }
-                  />
-                ))}
-              </Tabs>
-            </Box>
-
-            {tableConfig.map((table, index) => (
-              <TabPanel key={table.name} value={tabValue} index={index}>
-                <TableContainer sx={{ maxHeight: 600 }}>
-                  <Table stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        {tables[table.name][0] &&
-                          Object.keys(tables[table.name][0]).map((column) => (
-                            <TableCell
-                              key={column}
-                              sx={{
-                                fontWeight: 700,
-                                bgcolor: "background.default",
-                                color: "primary.main",
-                                textTransform: "uppercase",
-                                fontSize: "0.85rem",
-                                letterSpacing: "0.05em",
-                              }}
-                            >
-                              {column}
-                            </TableCell>
-                          ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {tables[table.name].map((row, rowIndex) => (
-                        <TableRow
-                          key={rowIndex}
-                          hover
-                          sx={{
-                            "&:hover": {
-                              bgcolor: "rgba(96, 165, 250, 0.05)",
-                            },
-                          }}
-                        >
-                          {Object.values(row).map((value, cellIndex) => (
-                            <TableCell key={cellIndex}>
-                              {value === null ? (
-                                <Chip
-                                  label="NULL"
-                                  size="small"
-                                  variant="outlined"
-                                  sx={{ opacity: 0.5 }}
-                                />
-                              ) : (
-                                value.toString()
-                              )}
-                            </TableCell>
-                          ))}
-                        </TableRow>
+          <TableContainer sx={{ maxHeight: 560, mt: 2 }}>
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  {activeRows[0] &&
+                    Object.keys(activeRows[0]).map((column) => (
+                      <TableCell key={column}>{column}</TableCell>
+                    ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pageRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={activeRows[0] ? Object.keys(activeRows[0]).length : 1}>
+                      <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
+                        No rows match "{search}"
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  pageRows.map((row, rowIndex) => (
+                    <TableRow key={page * rowsPerPage + rowIndex} hover>
+                      {Object.values(row).map((value, cellIndex) => (
+                        <TableCell key={cellIndex}>
+                          <CellValue value={value} />
+                        </TableCell>
                       ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </TabPanel>
-            ))}
-          </Paper>
-        </Box>
-      </Fade>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {filteredRows.length > ROWS_PER_PAGE_OPTIONS[0] && (
+            <TablePagination
+              component="div"
+              count={filteredRows.length}
+              page={page}
+              onPageChange={(e, newPage) => setPage(newPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+            />
+          )}
+        </TabPanel>
+      </Paper>
     </Container>
   );
 }

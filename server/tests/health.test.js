@@ -1,10 +1,7 @@
-const path = require("path");
 const request = require("supertest");
 const mongoose = require("mongoose");
 const clearServerModuleCache = require("./helpers/clearCache");
 const mockModule = require("./helpers/mockModule");
-
-const serverRoot = path.resolve(__dirname, "..");
 
 describe("Health API", () => {
   let app;

@@ -1,6 +1,4 @@
-const path = require("path");
 const request = require("supertest");
-const serverRoot = path.resolve(__dirname, "..");
 const clearServerModuleCache = require("./helpers/clearCache");
 const mockModule = require("./helpers/mockModule");
 const createAuthState = require("./helpers/authState");

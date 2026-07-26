@@ -1,11 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
-import { ThemeProvider, Box, Container, CircularProgress } from "@mui/material";
+import {
+  ThemeProvider,
+  CssBaseline,
+  Box,
+  CircularProgress,
+  Snackbar,
+  Alert,
+} from "@mui/material";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import HomePage from "./pages/HomePage";
@@ -13,12 +21,12 @@ import TablesPage from "./pages/TablesPage";
 import DocsPage from "./pages/DocsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import AdminPanel from "./pages/AdminPanel";
 import { checkHealth } from "./services/api";
 import darkTheme from "./theme";
 import "./App.css";
-import AdminPanel from "./pages/AdminPanel";
-import Snackbar from "@mui/material/Snackbar";
-import Alert from "@mui/material/Alert";
+
+const HEALTH_RETRY_INTERVAL = 15000;
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -44,9 +52,13 @@ function ProtectedRoute({ children }) {
 
 function AppContent() {
   const [backendStatus, setBackendStatus] = useState("checking");
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const retryTimer = useRef(null);
+  const location = useLocation();
 
   useEffect(() => {
     checkBackendHealth();
+    return () => clearTimeout(retryTimer.current);
   }, []);
 
   const checkBackendHealth = async () => {
@@ -55,6 +67,9 @@ function AppContent() {
       setBackendStatus("connected");
     } catch (error) {
       setBackendStatus("disconnected");
+      setBannerDismissed(false);
+      // Keep retrying quietly in the background until the backend comes back.
+      retryTimer.current = setTimeout(checkBackendHealth, HEALTH_RETRY_INTERVAL);
     }
   };
 
@@ -69,36 +84,31 @@ function AppContent() {
     >
       <Navbar />
 
-      {/* Main content wrapper */}
+      <Snackbar
+        open={backendStatus === "disconnected" && !bannerDismissed}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        onClose={() => setBannerDismissed(true)}
+      >
+        <Alert
+          severity="warning"
+          variant="filled"
+          onClose={() => setBannerDismissed(true)}
+          sx={{ width: "100%" }}
+        >
+          Can't reach the server right now. Some features may be limited —
+          we'll keep trying to reconnect.
+        </Alert>
+      </Snackbar>
+
       <Box
         component="main"
         sx={{
           flex: 1,
-          py: 4,
-          px: { xs: 2, sm: 3 },
           display: "flex",
           justifyContent: "center",
         }}
       >
-        <Container
-          maxWidth="xl"
-          sx={{
-            // Optional subtle card-like feel for pages
-            borderRadius: 2,
-            p: { xs: 2, sm: 3 },
-          }}
-        >
-          <Snackbar
-            open={backendStatus === "disconnected"}
-            anchorOrigin={{ vertical: "top", horizontal: "center" }}
-            autoHideDuration={6000} // remove if you want it to stay
-          >
-            <Alert severity="warning" variant="filled" sx={{ width: "100%" }}>
-              Backend server is not fully responding. Some features may be
-              limited.
-            </Alert>
-          </Snackbar>
-
+        <Box key={location.pathname} className="page-transition" sx={{ width: "100%" }}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -135,23 +145,21 @@ function AppContent() {
               }
             />
           </Routes>
-        </Container>
+        </Box>
       </Box>
 
-      {/* Sticky footer */}
       <Box
         component="footer"
         sx={{
           textAlign: "center",
           py: 3,
-          mt: 0,
           borderTop: "1px solid",
           borderColor: "divider",
           color: "text.secondary",
           bgcolor: "background.paper",
         }}
       >
-        Natural-language querying on a custom full-stack system
+        Made with 🩵 by Devansh
       </Box>
     </Box>
   );
@@ -160,6 +168,7 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
       <Router>
         <AuthProvider>
           <AppContent />

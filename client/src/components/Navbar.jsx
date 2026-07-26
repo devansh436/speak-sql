@@ -9,155 +9,138 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Divider,
 } from "@mui/material";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
 import HomeIcon from "@mui/icons-material/Home";
 import StorageIcon from "@mui/icons-material/Storage";
-import DescriptionIcon from "@mui/icons-material/Description";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { useAuth } from "../context/AuthContext";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import BadgeIcon from "@mui/icons-material/Badge";
+import PersonIcon from "@mui/icons-material/Person";
+import { useAuth } from "../context/AuthContext";
+
+const ROLE_META = {
+  ADMIN: { color: "error", icon: <AdminPanelSettingsIcon sx={{ fontSize: 16 }} /> },
+  STAFF: { color: "warning", icon: <BadgeIcon sx={{ fontSize: 16 }} /> },
+  USER: { color: "success", icon: <PersonIcon sx={{ fontSize: 16 }} /> },
+};
 
 function Navbar() {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
 
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
+  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
   const handleLogout = () => {
     logout();
     handleMenuClose();
   };
 
   const navItems = [
-    { path: "/", label: "Home", icon: <HomeIcon /> },
-    { path: "/tables", label: "Tables", icon: <StorageIcon /> },
+    { path: "/", label: "Home", icon: <HomeIcon fontSize="small" /> },
+    { path: "/tables", label: "Tables", icon: <StorageIcon fontSize="small" /> },
+    { path: "/docs", label: "Docs", icon: <MenuBookIcon fontSize="small" /> },
   ];
-  // If admin, add admin item (ensure no duplicate path!)
-  if (
-    user?.role === "ADMIN" &&
-    !navItems.some((item) => item.path === "/admin")
-  ) {
+  if (user?.role === "ADMIN") {
     navItems.push({
       path: "/admin",
       label: "Admin",
-      icon: <AdminPanelSettingsIcon />,
+      icon: <AdminPanelSettingsIcon fontSize="small" />,
     });
   }
 
-  const getRoleColor = (role) => {
-    switch (role) {
-      case "ADMIN":
-        return "error";
-      case "STAFF":
-        return "warning";
-      case "USER":
-        return "success";
-      default:
-        return "default";
-    }
-  };
-
-  const getRoleIcon = (role) => {
-    switch (role) {
-      case "ADMIN":
-        return "🧑‍💻";
-      case "STAFF":
-        return "🧑‍💼";
-      case "USER":
-        return "👤";
-      default:
-        return "👤";
-    }
-  };
+  const roleMeta = ROLE_META[user?.role] || ROLE_META.USER;
 
   return (
     <AppBar
       position="sticky"
       elevation={0}
       sx={{
-        bgcolor: "background.paper",
         borderBottom: "1px solid",
         borderColor: "divider",
       }}
-      style={{ borderRadius: "0" }}
     >
       <Container maxWidth="xl">
-        <Toolbar sx={{ justifyContent: "space-between", py: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <IconButton>
-              <img
-                src="/image.png"
-                alt="icon"
-                style={{ width: 30, height: 30 }}
-              />
-            </IconButton>
-            <Typography
-              variant="h6"
-              component={Link}
-              to="/"
+        <Toolbar sx={{ justifyContent: "space-between", py: 1, gap: 2 }}>
+          <Box
+            component={Link}
+            to="/"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.25,
+              textDecoration: "none",
+              color: "text.primary",
+            }}
+          >
+            <Box
               sx={{
-                fontWeight: 700,
-                color: "text.primary",
-                textDecoration: "none",
-                "&:hover": {
-                  color: "primary.main",
-                },
+                width: 32,
+                height: 32,
+                borderRadius: 1.5,
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: "1rem",
               }}
             >
+              S
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
               SpeakSQL
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-            {navItems.map((item) => (
-              <Button
-                key={item.path}
-                component={Link}
-                to={item.path}
-                startIcon={item.icon}
-                sx={{
-                  color:
-                    location.pathname === item.path
-                      ? "primary.main"
-                      : "text.secondary",
-                  fontWeight: location.pathname === item.path ? 700 : 500,
-                  bgcolor:
-                    location.pathname === item.path
-                      ? "rgba(96, 165, 250, 0.1)"
-                      : "transparent",
-                  "&:hover": {
-                    bgcolor: "rgba(96, 165, 250, 0.15)",
-                    color: "primary.main",
-                  },
-                }}
-              >
-                {item.label}
-              </Button>
-            ))}
+          <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+            {navItems.map((item) => {
+              const active = location.pathname === item.path;
+              return (
+                <Button
+                  key={item.path}
+                  component={Link}
+                  to={item.path}
+                  startIcon={item.icon}
+                  sx={{
+                    px: 1.5,
+                    color: active ? "primary.main" : "text.secondary",
+                    fontWeight: active ? 700 : 500,
+                    borderRadius: 0,
+                    borderBottom: "2px solid",
+                    borderColor: active ? "primary.main" : "transparent",
+                    "&:hover": {
+                      color: "primary.main",
+                      backgroundColor: "transparent",
+                    },
+                  }}
+                >
+                  {item.label}
+                </Button>
+              );
+            })}
 
             {isAuthenticated ? (
               <>
                 <Chip
-                  label={`${getRoleIcon(user?.role)} ${user?.role}`}
-                  color={getRoleColor(user?.role)}
+                  icon={roleMeta.icon}
+                  label={user?.role}
+                  color={roleMeta.color}
                   size="small"
+                  variant="outlined"
                   sx={{ ml: 2 }}
                 />
                 <IconButton
                   onClick={handleMenuOpen}
-                  sx={{ color: "primary.main" }}
+                  aria-label="Account menu"
+                  sx={{ color: "text.secondary", ml: 0.5 }}
                 >
                   <AccountCircleIcon />
                 </IconButton>
@@ -166,14 +149,20 @@ function Navbar() {
                   open={Boolean(anchorEl)}
                   onClose={handleMenuClose}
                 >
-                  <MenuItem disabled>
-                    <Typography variant="body2">
-                      {user?.username} ({user?.email})
-                    </Typography>
+                  <MenuItem disabled sx={{ opacity: "1 !important" }}>
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {user?.username}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {user?.email}
+                      </Typography>
+                    </Box>
                   </MenuItem>
+                  <Divider />
                   <MenuItem onClick={handleLogout}>
                     <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
-                    Logout
+                    Log out
                   </MenuItem>
                 </Menu>
               </>
@@ -186,7 +175,7 @@ function Navbar() {
                 size="small"
                 sx={{ ml: 2 }}
               >
-                Login
+                Log in
               </Button>
             )}
           </Box>

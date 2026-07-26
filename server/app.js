@@ -19,26 +19,26 @@ app.use(
     credentials: true,
     
     origin(origin, callback) {
-      // Allow Postman, curl, server-to-server requests
+      console.log("Origin:", origin);
+
       if (!origin) {
         return callback(null, true);
       }
       
-      // Allow all Vercel preview deployments
       if (origin.endsWith(".vercel.app")) {
         return callback(null, true);
       }
 
-      // Allow local development
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       
-      // Reject everything else
-        return callback(new Error("Not allowed by CORS"));
+      console.log("Blocked:", origin);
+      return callback(new Error("Not allowed by CORS"));
     },
   }),
 );
+
 app.use(express.json());
 
 // Root route

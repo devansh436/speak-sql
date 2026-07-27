@@ -36,13 +36,27 @@ const SCHEMA = [
 ];
 
 const STEPS = [
-  { title: 'Ask', body: 'Type a question in plain English, like "Which members have overdue books?"' },
-  { title: 'Translate', body: 'Gemini converts the question into a SQL query.' },
-  { title: 'Validate', body: 'The backend checks the query is safe before running it.' },
-  { title: 'Execute', body: 'The query runs against the Aiven MySQL database.' },
-  { title: 'Display', body: 'Results come back in a formatted, sortable table.' },
+  {
+    title: "Authenticate",
+    body: "The user signs in with Firebase Authentication and the client sends the Firebase ID token with each query.",
+  },
+  {
+    title: "Generate SQL",
+    body: "The backend verifies the token, retrieves the current database schema, and uses the Gemini API to convert the natural-language question into SQL.",
+  },
+  {
+    title: "Validate",
+    body: "The generated SQL is checked against the user's role. Unauthorized tables, unsafe operations, injection patterns, and multi-statement queries are rejected.",
+  },
+  {
+    title: "Execute",
+    body: "If validation succeeds, the SQL query is executed against the MySQL database.",
+  },
+  {
+    title: "Return Results",
+    body: "The query results are returned to the client. If validation fails, a role-based error response is sent instead.",
+  },
 ];
-
 function Section({ icon, title, children }) {
   return (
     <Paper variant="outlined" sx={{ p: 4, mb: 3 }}>
@@ -69,20 +83,24 @@ function DocsPage() {
       </Stack>
 
       <Paper variant="outlined" sx={{ p: 4, mb: 3 }}>
-        <Typography variant="h5" fontWeight={700} gutterBottom>
-          Overview
-        </Typography>
-        <Divider sx={{ mb: 2.5 }} />
-        <Typography variant="body1" color="text.secondary" paragraph>
-          SpeakSQL lets you query a MySQL library database using plain English
-          instead of writing SQL. Under the hood, Google's Gemini converts
-          your question into a SQL query, runs it, and shows you the results.
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Failed queries are automatically retried with a corrected version
-          up to twice before being reported back to you.
-        </Typography>
-      </Paper>
+  <Typography variant="h5" fontWeight={700} gutterBottom>
+    Overview
+  </Typography>
+  <Divider sx={{ mb: 2.5 }} />
+
+  <Typography variant="body1" color="text.secondary" paragraph>
+    SpeakSQL allows authenticated users to query a MySQL library database
+    using natural language instead of writing SQL. Questions are converted
+    into SQL using external LLM service with the current database schema as
+    context, then validated before execution.
+  </Typography>
+
+  <Typography variant="body1" color="text.secondary">
+    Firebase Authentication secures user access, MongoDB stores user
+    profiles and roles, and role-based SQL validation ensures users can
+    only execute queries permitted by their assigned permissions.
+  </Typography>
+</Paper>
 
       <Section icon={<StorageIcon color="primary" />} title="Database schema">
         <Stack spacing={3}>

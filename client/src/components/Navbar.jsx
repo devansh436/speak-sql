@@ -25,7 +25,10 @@ import PersonIcon from "@mui/icons-material/Person";
 import { useAuth } from "../context/AuthContext";
 
 const ROLE_META = {
-  ADMIN: { color: "error", icon: <AdminPanelSettingsIcon sx={{ fontSize: 16 }} /> },
+  ADMIN: {
+    color: "error",
+    icon: <AdminPanelSettingsIcon sx={{ fontSize: 16 }} />,
+  },
   STAFF: { color: "warning", icon: <BadgeIcon sx={{ fontSize: 16 }} /> },
   USER: { color: "success", icon: <PersonIcon sx={{ fontSize: 16 }} /> },
 };
@@ -44,7 +47,11 @@ function Navbar() {
 
   const navItems = [
     { path: "/", label: "Home", icon: <HomeIcon fontSize="small" /> },
-    { path: "/tables", label: "Tables", icon: <StorageIcon fontSize="small" /> },
+    {
+      path: "/tables",
+      label: "Tables",
+      icon: <StorageIcon fontSize="small" />,
+    },
     { path: "/docs", label: "Docs", icon: <MenuBookIcon fontSize="small" /> },
   ];
   if (user?.role === "ADMIN") {
@@ -80,21 +87,15 @@ function Navbar() {
             }}
           >
             <Box
+              component="img"
+              src="/icon.svg"
+              alt="SpeakSQL Logo"
               sx={{
                 width: 32,
                 height: 32,
-                borderRadius: 1.5,
-                bgcolor: "primary.main",
-                color: "primary.contrastText",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 800,
-                fontSize: "1rem",
               }}
-            >
-              S
-            </Box>
+            />
+
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               SpeakSQL
             </Typography>

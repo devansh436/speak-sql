@@ -298,8 +298,7 @@ Admin can change roles of users via a panel displayed only to Admin
 - Role-based access control (RBAC) is enforced at both the middleware and SQL validation layers.
 - Allowlist-based table and operation filtering prevents queries from accessing unauthorized resources.
 - Multi-statement queries are rejected before execution.
-- Common SQL injection patterns are detected and blocked by the validator, independent of user role.
-- Database schema is supplied to the LLM at runtime, while query execution remains server-controlled.
+- The validator detects and blocks several common SQL injection patterns, including chained statements, comment-based injection, UNION-based injection, and boolean-based injection.
 - User roles are stored separately in MongoDB and never trusted from client-provided data.
   
 ---

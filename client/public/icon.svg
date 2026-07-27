@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>SpeakSQL icon</title>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="512" height="512" rx="120" fill="#111315"/>
+  <rect x="2" y="2" width="508" height="508" rx="118" fill="none" stroke="#32373C" stroke-width="2"/>
+
+  <!-- Speech bubble: the natural-language question -->
+  <path d="M150 312 C140 340, 118 362, 96 378 C132 372, 168 352, 188 318 Z" fill="#22C55E"/>
+  <rect x="90" y="104" width="290" height="210" rx="54" fill="#22C55E"/>
+
+  <!-- Text-line placeholders inside the bubble -->
+  <rect x="124" y="144" width="190" height="18" rx="9" fill="#111315"/>
+  <rect x="124" y="182" width="230" height="18" rx="9" fill="#111315"/>
+  <rect x="124" y="220" width="150" height="18" rx="9" fill="#111315"/>
+  <rect x="284" y="220" width="18" height="18" rx="4" fill="#F59E0B"/>
+
+  <!-- Badge separation ring -->
+  <circle cx="384" cy="344" r="92" fill="#111315"/>
+
+  <!-- Database badge: the SQL execution -->
+  <circle cx="384" cy="344" r="78" fill="#1A1D20" stroke="#32373C" stroke-width="3"/>
+  <ellipse cx="384" cy="310" rx="32" ry="11" fill="none" stroke="#F59E0B" stroke-width="7"/>
+  <path d="M352 310 L352 358 Q352 372 384 372 Q416 372 416 358 L416 310"
+        fill="none" stroke="#F59E0B" stroke-width="7" stroke-linecap="round"/>
+  <path d="M352 334 Q384 346 416 334" fill="none" stroke="#F59E0B" stroke-width="6" stroke-linecap="round"/>
+</svg>

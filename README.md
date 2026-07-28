@@ -92,52 +92,10 @@ The application is built around a library-style relational dataset in MySQL. Use
 
 ---
 
-## Architecture
+## Architecture Diagram
 
-```mermaid
-flowchart LR
-    subgraph CLIENT["Client — React + Vite"]
-        AUTHCTX["AuthContext"]
-        UI["Query UI"]
-    end
- 
-    FIREBASE[["Firebase Auth"]]
- 
-    subgraph SERVER["Server — Express"]
-        MW["Auth Middleware"]
-        SQLSVC["SQL Service"]
-        LLMSVC["LLM Service"]
-        RV{"Role Validator"}
-    end
- 
-    MONGO[("MongoDB<br/>user profiles")]
-    MYSQL[("MySQL<br/>library data")]
-    ERROR["Role-based<br/>error response"]
- 
-    AUTHCTX <-->|"sign in / ID token"| FIREBASE
-    UI -->|"question + ID token"| MW
-    MW -->|"verify token"| FIREBASE
-    MW -->|"upsert profile"| MONGO
-    MW --> SQLSVC
-    SQLSVC -->|"question + schema"| LLMSVC
-    LLMSVC -->|"generated SQL"| RV
-    RV -->|"allowed for role"| MYSQL
-    RV -->|"blocked"| ERROR
- 
-    classDef client fill:#e8f0fe,stroke:#4285f4,color:#1a1a1a;
-    classDef server fill:#fef7e0,stroke:#f9ab00,color:#1a1a1a;
-    classDef data fill:#e6f4ea,stroke:#34a853,color:#1a1a1a;
-    classDef external fill:#f3e8fd,stroke:#a142f4,color:#1a1a1a;
-    classDef decision fill:#fce8e6,stroke:#d93025,color:#1a1a1a;
-    classDef error fill:#fce8e6,stroke:#d93025,color:#1a1a1a,stroke-dasharray: 3 3;
- 
-    class AUTHCTX,UI client;
-    class MW,SQLSVC,LLMSVC server;
-    class RV decision;
-    class MONGO,MYSQL data;
-    class FIREBASE external;
-    class ERROR error;
-```
+<img width="850" height="auto" alt="image" src="https://github.com/user-attachments/assets/64de470f-aa93-491a-ace0-5052a532270c" />
+
 ---
 
 ## How It Works

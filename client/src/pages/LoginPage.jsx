@@ -63,32 +63,14 @@ function LoginPage() {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: { xs: 6, sm: 10 }, mb: 6 }}>
-      <Box className="auth-card-enter" sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
-        <Box
-          sx={{
-            width: 44,
-            height: 44,
-            borderRadius: 2,
-            bgcolor: "primary.main",
-            color: "primary.contrastText",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 800,
-            fontSize: "1.35rem",
-          }}
-        >
-          S
-        </Box>
-      </Box>
+    <Container maxWidth="sm" sx={{ mt: { xs: 6, sm: 6 }, mb: 6 }}>
 
       <Paper variant="outlined" className="auth-card-enter" sx={{ p: { xs: 3, sm: 4.5 } }}>
         <Typography variant="h4" component="h1" fontWeight={700} gutterBottom align="center">
           Welcome back
         </Typography>
         <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3.5 }}>
-          Log in to query your library database in plain English
+          Log in to query your database in plain English
         </Typography>
 
         {error && (

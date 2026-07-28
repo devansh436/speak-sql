@@ -143,7 +143,7 @@ const authenticate = async (req, res, next) => {
 
     // Attach user to request
     req.user = user;
-    req.userId = user._id;
+    req.userId = user._id; // mongodb doc _id
     req.userRole = resolveUserRole(user, decoded);
     req.firebaseUser = decoded;
 

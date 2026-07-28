@@ -94,7 +94,7 @@ The application is built around a library-style relational dataset in MySQL. Use
 
 ## Architecture Diagram
 
-<img width="850" height="auto" alt="image" src="https://github.com/user-attachments/assets/64de470f-aa93-491a-ace0-5052a532270c" />
+<img width="850" height="auto" alt="image" src="https://github.com/user-attachments/assets/3ba9ecf8-624c-42e7-b611-8573bf22f47d" />
 
 ---
 

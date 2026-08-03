@@ -17,7 +17,7 @@ SpeakSQL lets authenticated users ask natural-language questions and get back re
   - [Overview](#overview)
   - [Features](#features)
   - [Tech Stack](#tech-stack)
-  - [Architecture](#architecture)
+  - [Architecture](#architecture-diagram)
   - [How It Works](#how-it-works)
   - [Project Structure](#project-structure)
   - [Getting Started](#getting-started)

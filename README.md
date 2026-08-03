@@ -1,6 +1,5 @@
 # SpeakSQL
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-19%2B-green.svg)
 ![CI](https://github.com/devansh436/speak-sql/actions/workflows/backend-ci.yml/badge.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)
